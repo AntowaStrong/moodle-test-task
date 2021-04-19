@@ -1,0 +1,65 @@
+version: "3.1"
+services:
+  mysql:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password --max_allowed_packet=1500M
+    container_name: mysql
+    restart: always
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./docker/mysql:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "8078:3306"
+
+  phpmyadmin:
+    depends_on:
+      - mysql
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - '8079:80'
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: docker 
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    working_dir: /application
+    restart: always
+    depends_on: 
+      - laravel
+      - moodle
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8080:80"
+      - "8081:81"
+    expose:
+      - "8081"
+
+  laravel:
+    build: docker/laravel
+    container_name: laravel
+    working_dir: /application
+    env_file:
+      - ./docker/laravel/.env
+    depends_on: 
+      - mysql
+    volumes:
+      - ./sources/laravel:/application
+      - ./docker/laravel/xdebug.ini:/etc/php/7.4/fpm/conf.d/xdebug.ini
+
+  moodle:
+    build: docker/moodle
+    container_name: moodle
+    working_dir: /application
+    depends_on: 
+      - mysql
+    volumes:
+      - ./sources/moodle:/application
+      - ./sources/moodledata:/moodledata
+
